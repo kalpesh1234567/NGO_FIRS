@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | GauRaksha NGO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Marathi&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+:root{--saffron:#FF6B1A;--saffron-light:#FF8C42;--navy:#0D1B2A;--navy-mid:#1A2E45;--navy-light:#243B55;--cream:#FFF8F0;--gold:#FFB347;--white:#FFFFFF;--text-dim:#8DA0B3;--success:#34C77B;--border:rgba(255,107,26,0.18);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Syne',sans-serif;background:var(--navy);color:var(--cream);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 50% at 15% 10%,rgba(255,107,26,0.07) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 85% 85%,rgba(255,179,71,0.05) 0%,transparent 50%);pointer-events:none;z-index:0;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:0 48px;height:68px;display:flex;align-items:center;justify-content:space-between;background:rgba(13,27,42,0.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
+.nav-logo{display:flex;align-items:center;gap:12px;text-decoration:none;}
+.nav-logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--saffron),var(--gold));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.nav-logo-text strong{font-size:17px;font-weight:800;color:var(--white);display:block;letter-spacing:-0.3px;}
+.nav-logo-text span{font-size:10px;color:var(--text-dim);font-family:'Tiro Devanagari Marathi',serif;}
+.nav-links{display:flex;align-items:center;gap:6px;}
+.nav-links a{color:var(--text-dim);text-decoration:none;font-size:13px;padding:7px 14px;border-radius:8px;transition:all 0.2s;font-weight:600;}
+.nav-links a:hover{color:var(--white);background:rgba(255,255,255,0.06);}
+.nav-links a.active{color:var(--saffron);}
+.nav-cta{background:linear-gradient(135deg,var(--saffron),var(--saffron-light));color:white!important;padding:8px 18px!important;border-radius:9px!important;}
+
+.main{position:relative;z-index:1;padding-top:88px;max-width:1140px;margin:0 auto;padding-left:40px;padding-right:40px;padding-bottom:60px;}
+
+.page-header{padding:32px 0 24px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+.page-header-left{}
+.page-header-label{font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:var(--saffron);margin-bottom:8px;}
+.page-header h1{font-size:34px;font-weight:800;letter-spacing:-1px;color:var(--white);margin-bottom:4px;}
+.page-header p{font-size:13px;color:var(--text-dim);}
+.header-actions{display:flex;gap:10px;align-items:center;}
+.btn-dl{display:inline-flex;align-items:center;gap:8px;background:rgba(52,199,123,0.1);border:1px solid rgba(52,199,123,0.25);color:var(--success);border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;font-family:'Syne',sans-serif;cursor:pointer;transition:all 0.2s;}
+.btn-dl:hover{background:rgba(52,199,123,0.18);}
+.btn-add{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--saffron),var(--gold));color:var(--navy);border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:800;font-family:'Syne',sans-serif;cursor:pointer;text-decoration:none;transition:all 0.2s;}
+.btn-add:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,107,26,0.35);}
+
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.kpi{background:var(--navy-mid);border:1px solid var(--border);border-radius:16px;padding:20px 22px;transition:all 0.2s;position:relative;overflow:hidden;}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--saffron),var(--gold));opacity:0;transition:opacity 0.2s;}
+.kpi:hover::after{opacity:1;}
+.kpi:hover{border-color:rgba(255,107,26,0.35);transform:translateY(-2px);}
+.kpi-icon{font-size:24px;margin-bottom:12px;display:block;}
+.kpi-num{font-size:36px;font-weight:800;font-family:'DM Mono',monospace;color:var(--saffron);display:block;line-height:1;margin-bottom:6px;}
+.kpi-label{font-size:12px;color:var(--text-dim);}
+.kpi-sub{font-size:10px;font-family:'Tiro Devanagari Marathi',serif;color:rgba(255,107,26,0.45);display:block;margin-top:2px;}
+
+/* CHARTS GRID */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+.chart-card{background:var(--navy-mid);border:1px solid var(--border);border-radius:18px;padding:24px;}
+.chart-title{font-size:14px;font-weight:700;color:var(--white);margin-bottom:2px;}
+.chart-sub{font-size:11px;color:var(--text-dim);font-family:'Tiro Devanagari Marathi',serif;margin-bottom:18px;}
+.chart-wrap{position:relative;height:220px;}
+
+.chart-card.wide{grid-column:span 2;}
+
+/* TABLE SECTION */
+.section-title{font-size:16px;font-weight:700;color:var(--white);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.section-title small{font-size:11px;color:var(--text-dim);font-family:'DM Mono',monospace;font-weight:400;}
+.search-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.search-input{flex:1;background:var(--navy-mid);border:1px solid var(--border);color:var(--cream);border-radius:10px;padding:10px 16px;font-size:13px;font-family:'Syne',sans-serif;outline:none;transition:border-color 0.2s;min-width:180px;}
+.search-input:focus{border-color:var(--saffron);}
+.search-input::placeholder{color:var(--text-dim);}
+.filter-sel{background:var(--navy-mid);border:1px solid var(--border);color:var(--cream);border-radius:10px;padding:10px 14px;font-size:12px;font-family:'Syne',sans-serif;outline:none;cursor:pointer;}
+
+.table-wrap{border-radius:16px;overflow:hidden;border:1px solid var(--border);overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:800px;}
+thead{background:var(--navy-light);}
+thead th{padding:12px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--saffron);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+thead th:hover{color:var(--gold);}
+tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;}
+tbody tr:hover{background:rgba(255,107,26,0.04);}
+tbody tr:last-child{border-bottom:none;}
+tbody td{padding:11px 14px;color:var(--cream);font-family:'DM Mono',monospace;font-size:11px;vertical-align:middle;}
+.fir-badge{background:rgba(255,107,26,0.12);color:var(--saffron);border:1px solid rgba(255,107,26,0.2);border-radius:5px;padding:2px 7px;font-size:10px;display:inline-block;}
+.del-btn{background:rgba(255,80,80,0.1);border:1px solid rgba(255,80,80,0.2);color:#FF5050;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer;font-family:'DM Mono',monospace;transition:all 0.2s;}
+.del-btn:hover{background:rgba(255,80,80,0.2);}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text-dim);}
+.empty-icon{font-size:36px;margin-bottom:10px;}
+.no-data-msg{font-size:13px;line-height:1.6;}
+.no-data-msg a{color:var(--saffron);text-decoration:none;}
+
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr;}.chart-card.wide{grid-column:span 1;}.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){nav{padding:0 16px;}.nav-links{display:none;}.main{padding-left:16px;padding-right:16px;}.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">
+    <div class="nav-logo-icon">🐄</div>
+    <div class="nav-logo-text">
+      <strong>GauRaksha NGO</strong>
+      <span>गौरक्षा संस्था</span>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="extractor.html">FIR Extractor</a>
+    <a href="records.html">Add Record</a>
+    <a href="about.html">About</a>
+    <a href="extractor.html" class="nav-cta">⚡ Extract FIR</a>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-header-label">Analytics · विश्लेषण</div>
+      <h1>Case Dashboard</h1>
+      <p>All FIR records at a glance · सर्व एफआयआर नोंदी एका नजरेत</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-dl" onclick="downloadAll()">⬇️ Export All Excel</button>
+      <a href="records.html" class="btn-add">+ Add Record</a>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi"><span class="kpi-icon">📋</span><span class="kpi-num" id="kTotal">0</span><div class="kpi-label">Total Cases<span class="kpi-sub">एकूण केसेस</span></div></div>
+    <div class="kpi"><span class="kpi-icon">🐄</span><span class="kpi-num" id="kAnimals">0</span><div class="kpi-label">Animals Recorded<span class="kpi-sub">एकूण पशू</span></div></div>
+    <div class="kpi"><span class="kpi-icon">🏛️</span><span class="kpi-num" id="kStations">0</span><div class="kpi-label">Police Stations<span class="kpi-sub">पोलीस ठाणे</span></div></div>
+    <div class="kpi"><span class="kpi-icon">📍</span><span class="kpi-num" id="kDistricts">0</span><div class="kpi-label">Districts<span class="kpi-sub">जिल्हे</span></div></div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Cases by Police Station</div>
+      <div class="chart-sub">पोलीस ठाण्यानुसार केसेस</div>
+      <div class="chart-wrap"><canvas id="chartStation"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Animals by Case</div>
+      <div class="chart-sub">प्रकरणानुसार पशू</div>
+      <div class="chart-wrap"><canvas id="chartAnimals"></canvas></div>
+    </div>
+    <div class="chart-card wide">
+      <div class="chart-title">Cases Over Time · कालानुसार केसेस</div>
+      <div class="chart-sub">Monthly distribution of FIR registrations</div>
+      <div class="chart-wrap" style="height:180px"><canvas id="chartTime"></canvas></div>
+    </div>
+  </div>
+
+  <!-- RECORDS TABLE -->
+  <div class="section-title">
+    All Records · सर्व नोंदी
+    <small id="tableCount"></small>
+  </div>
+  <div class="search-bar">
+    <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search by FIR No., accused, station..." oninput="filterTable()">
+    <select class="filter-sel" id="filterDistrict" onchange="filterTable()"><option value="">All Districts</option></select>
+    <select class="filter-sel" id="filterStation" onchange="filterTable()"><option value="">All Stations</option></select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th onclick="sortBy('firNo')">FIR No. ↕</th>
+          <th onclick="sortBy('date')">Date ↕</th>
+          <th onclick="sortBy('policeStation')">Police Station ↕</th>
+          <th onclick="sortBy('district')">District ↕</th>
+          <th>Accused · आरोपी</th>
+          <th>Vehicle/Place</th>
+          <th onclick="sortBy('animals')">Animals ↕</th>
+          <th>Sections</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let allRecords=[], filtered=[], sortKey='', sortDir=1;
+
+function loadRecords(){
+  allRecords=JSON.parse(localStorage.getItem('gau_records')||'[]');
+  // Seed demo data if empty
+  if(!allRecords.length){
+    allRecords=[
+      {firNo:'0013',date:'01/02/2017',policeStation:'Dhadgaon',district:'Nandurbar',accused:'Narsing Mangya Vasave',vehicle:'Mahindra Pik Up MH26/AD5244',animals:'3',sections:'83, 177, 11(1), 9',fileName:'NANDURBAR_DHADGAON_2017_0013.pdf',source:'pdf'},
+      {firNo:'0053/22',date:'27/02/2022',policeStation:'Sonagir',district:'Nandurbar',accused:'Akram Munaf Multani, Allarakh Ismail Multani',vehicle:'Bollero Picup GJ35 T2219',animals:'5',sections:'11(1), 9',fileName:'manual',source:'manual'},
+      {firNo:'0100/22',date:'20/04/2022',policeStation:'Sonagir',district:'Nandurbar',accused:'Unknown',vehicle:'Mahindra Picup MH25 P0973',animals:'10',sections:'11(1), 9',fileName:'manual',source:'manual'},
+      {firNo:'0126/22',date:'08/05/2022',policeStation:'Sonagir',district:'Nandurbar',accused:'Shahrukh Khan Seraj Khan, Irfan Shah Ibrahim Raha',vehicle:'Eicher DD01 G9209',animals:'24',sections:'11(1), 9',fileName:'manual',source:'manual'},
+      {firNo:'0159/22',date:'07/06/2022',policeStation:'Sonagir',district:'Nandurbar',accused:'Unknown',vehicle:'TATA 407 MH18 AA0877',animals:'10',sections:'11(1), 9',fileName:'manual',source:'manual'},
+      {firNo:'FIR123/26',date:'01/02/2026',policeStation:'Andheri',district:'Mumbai',accused:'Ramesh Yadav',vehicle:'Tempo',animals:'5',sections:'11(1)',fileName:'manual',source:'manual'},
+      {firNo:'FIR124/26',date:'02/02/2026',policeStation:'Bandra',district:'Mumbai',accused:'Imran Khan',vehicle:'Pickup Truck',animals:'8',sections:'11(1)',fileName:'manual',source:'manual'},
+    ];
+    localStorage.setItem('gau_records',JSON.stringify(allRecords));
+  }
+  filtered=[...allRecords];
+  populateFilters();
+  updateKPIs();
+  renderCharts();
+  renderTable();
+}
+
+function populateFilters(){
+  const districts=[...new Set(allRecords.map(r=>r.district).filter(Boolean))].sort();
+  const stations=[...new Set(allRecords.map(r=>r.policeStation).filter(Boolean))].sort();
+  const dSel=document.getElementById('filterDistrict');
+  const sSel=document.getElementById('filterStation');
+  dSel.innerHTML='<option value="">All Districts</option>'+districts.map(d=>`<option value="${d}">${d}</option>`).join('');
+  sSel.innerHTML='<option value="">All Stations</option>'+stations.map(s=>`<option value="${s}">${s}</option>`).join('');
+}
+
+function updateKPIs(){
+  document.getElementById('kTotal').textContent=allRecords.length;
+  document.getElementById('kAnimals').textContent=allRecords.reduce((s,r)=>s+(parseInt(r.animals)||0),0);
+  document.getElementById('kStations').textContent=new Set(allRecords.map(r=>r.policeStation).filter(Boolean)).size;
+  document.getElementById('kDistricts').textContent=new Set(allRecords.map(r=>r.district).filter(Boolean)).size;
+}
+
+let chartStation=null, chartAnimals=null, chartTime=null;
+const COLORS=['#FF6B1A','#FFB347','#34C77B','#5B9BFF','#C77BFF','#FF5B9B','#9BFF5B','#5BFFDB'];
+
+function renderCharts(){
+  // Station chart
+  const stCount={};
+  allRecords.forEach(r=>{if(r.policeStation)stCount[r.policeStation]=(stCount[r.policeStation]||0)+1;});
+  const stLabels=Object.keys(stCount), stData=Object.values(stCount);
+  if(chartStation)chartStation.destroy();
+  chartStation=new Chart(document.getElementById('chartStation'),{
+    type:'bar',
+    data:{labels:stLabels,datasets:[{data:stData,backgroundColor:COLORS,borderRadius:6,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8DA0B3',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8DA0B3',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}}}}
+  });
+
+  // Animals chart
+  const topRecs=allRecords.filter(r=>r.animals).sort((a,b)=>(parseInt(b.animals)||0)-(parseInt(a.animals)||0)).slice(0,8);
+  if(chartAnimals)chartAnimals.destroy();
+  chartAnimals=new Chart(document.getElementById('chartAnimals'),{
+    type:'bar',
+    data:{labels:topRecs.map(r=>r.firNo||'—'),datasets:[{data:topRecs.map(r=>parseInt(r.animals)||0),backgroundColor:'rgba(255,179,71,0.7)',borderRadius:6,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8DA0B3',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8DA0B3',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}}}}
+  });
+
+  // Time chart — by year
+  const yearCount={};
+  allRecords.forEach(r=>{
+    const yr=r.date.match(/(\d{4})/)?.[1];
+    if(yr)yearCount[yr]=(yearCount[yr]||0)+1;
+  });
+  const years=Object.keys(yearCount).sort();
+  if(chartTime)chartTime.destroy();
+  chartTime=new Chart(document.getElementById('chartTime'),{
+    type:'line',
+    data:{labels:years,datasets:[{data:years.map(y=>yearCount[y]),borderColor:COLORS[0],backgroundColor:'rgba(255,107,26,0.08)',fill:true,tension:0.4,pointBackgroundColor:COLORS[0],pointRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8DA0B3',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8DA0B3',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}}}}
+  });
+}
+
+function filterTable(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  const d=document.getElementById('filterDistrict').value;
+  const s=document.getElementById('filterStation').value;
+  filtered=allRecords.filter(r=>{
+    const matchQ=!q||(r.firNo||'').toLowerCase().includes(q)||(r.accused||'').toLowerCase().includes(q)||(r.policeStation||'').toLowerCase().includes(q)||(r.vehicle||'').toLowerCase().includes(q)||(r.district||'').toLowerCase().includes(q);
+    const matchD=!d||r.district===d;
+    const matchS=!s||r.policeStation===s;
+    return matchQ&&matchD&&matchS;
+  });
+  renderTable();
+}
+
+function sortBy(key){
+  if(sortKey===key)sortDir*=-1; else {sortKey=key;sortDir=1;}
+  filtered.sort((a,b)=>{
+    const av=a[key]||'', bv=b[key]||'';
+    if(key==='animals')return(parseInt(av)||0-parseInt(bv)||0)*sortDir;
+    return av.localeCompare(bv)*sortDir;
+  });
+  renderTable();
+}
+
+function renderTable(){
+  const tbody=document.getElementById('tableBody');
+  document.getElementById('tableCount').textContent=`(${filtered.length} of ${allRecords.length})`;
+  tbody.innerHTML='';
+  if(!filtered.length){
+    tbody.innerHTML=`<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">📋</div><div class="no-data-msg">No records found. <a href="extractor.html">Extract from PDFs</a> or <a href="records.html">add manually</a>.</div></div></td></tr>`;
+    return;
+  }
+  filtered.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td style="color:var(--text-dim)">${i+1}</td>
+      <td><span class="fir-badge">${r.firNo||'—'}</span></td>
+      <td>${r.date||'—'}</td>
+      <td>${r.policeStation||'—'}</td>
+      <td>${r.district||'—'}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.accused||'—'}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.vehicle||'—'}</td>
+      <td style="color:var(--gold);font-weight:700">${r.animals||'—'}</td>
+      <td style="color:var(--text-dim);font-size:10px">${r.sections||'—'}</td>
+      <td><button class="del-btn" onclick="deleteRecord(${allRecords.indexOf(r)})">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function deleteRecord(idx){
+  if(!confirm('Delete this record?'))return;
+  allRecords.splice(idx,1);
+  localStorage.setItem('gau_records',JSON.stringify(allRecords));
+  loadRecords();
+}
+
+function downloadAll(){
+  if(!allRecords.length)return;
+  const headers=[
+    ['अ.क्र.','दिनांक','पोलिस स्टेशन','जिल्हा','एफ.आय.आर.नं.','आरोपीचे नाव','ठिकाण/वाहन प्रकार','गोवंश संख्या','कलम'],
+    ['Sr.No.','Date','Police Station','District','FIR No.','Accused Name','Vehicle / Place','Animals','Sections']
+  ];
+  const rows=allRecords.map((r,i)=>[i+1,r.date,r.policeStation,r.district,r.firNo,r.accused,r.vehicle,r.animals,r.sections]);
+  const ws=XLSX.utils.aoa_to_sheet([...headers,...rows]);
+  ws['!cols']=[{wch:6},{wch:14},{wch:22},{wch:16},{wch:14},{wch:28},{wch:22},{wch:10},{wch:18}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'ALL FIR');
+  XLSX.writeFile(wb,`GauRaksha_ALL_FIR_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+loadRecords();
+</script>
+</body>
+</html>

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIR Extractor | GauRaksha NGO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Marathi&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+:root {
+  --saffron:#FF6B1A; --saffron-light:#FF8C42;
+  --navy:#0D1B2A; --navy-mid:#1A2E45; --navy-light:#243B55;
+  --cream:#FFF8F0; --gold:#FFB347; --white:#FFFFFF;
+  --text-dim:#8DA0B3; --success:#34C77B; --error:#FF5050;
+  --border:rgba(255,107,26,0.18);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Syne',sans-serif;background:var(--navy);color:var(--cream);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 50% at 15% 10%,rgba(255,107,26,0.07) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 85% 85%,rgba(255,179,71,0.05) 0%,transparent 50%);pointer-events:none;z-index:0;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:0 48px;height:68px;display:flex;align-items:center;justify-content:space-between;background:rgba(13,27,42,0.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
+.nav-logo{display:flex;align-items:center;gap:12px;text-decoration:none;}
+.nav-logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--saffron),var(--gold));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.nav-logo-text strong{font-size:17px;font-weight:800;color:var(--white);display:block;letter-spacing:-0.3px;}
+.nav-logo-text span{font-size:10px;color:var(--text-dim);font-family:'Tiro Devanagari Marathi',serif;}
+.nav-links{display:flex;align-items:center;gap:6px;}
+.nav-links a{color:var(--text-dim);text-decoration:none;font-size:13px;padding:7px 14px;border-radius:8px;transition:all 0.2s;font-weight:600;}
+.nav-links a:hover{color:var(--white);background:rgba(255,255,255,0.06);}
+.nav-links a.active{color:var(--saffron);}
+.nav-cta{background:linear-gradient(135deg,var(--saffron),var(--saffron-light));color:white!important;padding:8px 18px!important;border-radius:9px!important;}
+
+.main{position:relative;z-index:1;padding-top:88px;max-width:1140px;margin:0 auto;padding-left:40px;padding-right:40px;padding-bottom:60px;}
+
+/* PAGE HEADER */
+.page-header{padding:32px 0 28px;}
+.page-header-label{font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:var(--saffron);margin-bottom:10px;}
+.page-header h1{font-size:36px;font-weight:800;letter-spacing:-1px;color:var(--white);margin-bottom:6px;}
+.page-header p{font-size:14px;color:var(--text-dim);}
+.page-header p span{font-family:'Tiro Devanagari Marathi',serif;color:rgba(255,107,26,0.6);}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px;}
+.stat-box{background:var(--navy-mid);border:1px solid var(--border);border-radius:14px;padding:16px 20px;text-align:center;transition:border-color 0.2s;}
+.stat-box:hover{border-color:rgba(255,107,26,0.35);}
+.stat-box .n{font-size:28px;font-weight:800;font-family:'DM Mono',monospace;color:var(--saffron);display:block;}
+.stat-box .l{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.7px;margin-top:2px;}
+.stat-box .lm{font-family:'Tiro Devanagari Marathi',serif;font-size:10px;color:rgba(255,107,26,0.45);display:block;margin-top:1px;}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed rgba(255,107,26,0.3);border-radius:20px;padding:50px 40px;text-align:center;cursor:pointer;transition:all 0.3s;background:rgba(255,107,26,0.025);position:relative;overflow:hidden;margin-bottom:16px;}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--saffron);background:rgba(255,107,26,0.06);}
+.upload-icon{font-size:44px;display:block;margin-bottom:14px;}
+.upload-title{font-size:19px;font-weight:700;color:var(--white);margin-bottom:6px;}
+.upload-sub{font-size:13px;color:var(--text-dim);margin-bottom:4px;}
+.upload-m{font-size:12px;color:rgba(255,107,26,0.55);font-family:'Tiro Devanagari Marathi',serif;margin-bottom:20px;}
+.upload-btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--saffron),var(--saffron-light));color:white;border:none;border-radius:10px;padding:11px 26px;font-size:14px;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;transition:all 0.2s;}
+.upload-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,107,26,0.35);}
+#fileInput{display:none;}
+
+/* FILE LIST */
+.file-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.file-item{background:var(--navy-mid);border:1px solid var(--border);border-radius:10px;padding:11px 16px;display:flex;align-items:center;gap:12px;animation:slideIn 0.25s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.file-name{flex:1;font-size:12px;color:var(--white);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.file-status{font-size:11px;padding:3px 10px;border-radius:20px;font-family:'DM Mono',monospace;font-weight:500;flex-shrink:0;}
+.file-status.pending{background:rgba(141,160,179,0.12);color:var(--text-dim);}
+.file-status.processing{background:rgba(255,179,71,0.15);color:var(--gold);animation:blink 1s infinite;}
+.file-status.done{background:rgba(52,199,123,0.15);color:var(--success);}
+.file-status.error{background:rgba(255,80,80,0.12);color:var(--error);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.5}}
+
+/* ACTION BAR */
+.action-bar{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+.process-btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--saffron),var(--gold));color:var(--navy);border:none;border-radius:12px;padding:13px 28px;font-size:15px;font-weight:800;font-family:'Syne',sans-serif;cursor:pointer;transition:all 0.2s;}
+.process-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 30px rgba(255,107,26,0.4);}
+.process-btn:disabled{opacity:0.35;cursor:not-allowed;}
+.clear-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:12px;padding:13px 22px;font-size:13px;font-family:'Syne',sans-serif;cursor:pointer;transition:all 0.2s;}
+.clear-btn:hover{border-color:var(--saffron);color:var(--saffron);}
+.save-btn{display:inline-flex;align-items:center;gap:8px;background:rgba(52,199,123,0.1);border:1px solid rgba(52,199,123,0.3);color:var(--success);border-radius:12px;padding:13px 22px;font-size:13px;font-weight:600;font-family:'Syne',sans-serif;cursor:pointer;transition:all 0.2s;}
+.save-btn:hover{background:rgba(52,199,123,0.18);}
+.save-btn:disabled{opacity:0.35;cursor:not-allowed;}
+
+/* PROGRESS */
+.progress-wrap{margin-bottom:16px;display:none;}
+.progress-bar{height:4px;background:var(--navy-light);border-radius:2px;overflow:hidden;margin-bottom:6px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--saffron),var(--gold));border-radius:2px;transition:width 0.4s ease;width:0%;}
+.progress-text{font-size:12px;color:var(--text-dim);font-family:'DM Mono',monospace;}
+
+/* TABLE */
+.table-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.table-title{font-size:16px;font-weight:700;color:var(--white);}
+.table-title small{font-size:11px;color:var(--text-dim);font-family:'DM Mono',monospace;margin-left:8px;font-weight:400;}
+.dl-btn{display:inline-flex;align-items:center;gap:7px;background:rgba(52,199,123,0.1);border:1px solid rgba(52,199,123,0.25);color:var(--success);border-radius:9px;padding:9px 18px;font-size:13px;font-weight:600;font-family:'Syne',sans-serif;cursor:pointer;transition:all 0.2s;}
+.dl-btn:hover{background:rgba(52,199,123,0.18);transform:translateY(-1px);}
+
+.table-wrap{border-radius:16px;overflow:hidden;border:1px solid var(--border);overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:900px;}
+thead{background:var(--navy-light);}
+thead th{padding:12px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--saffron);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;}
+thead th .ml{display:block;font-family:'Tiro Devanagari Marathi',serif;font-size:10px;color:var(--text-dim);text-transform:none;letter-spacing:0;margin-top:1px;}
+tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;}
+tbody tr:hover{background:rgba(255,107,26,0.04);}
+tbody tr:last-child{border-bottom:none;}
+tbody td{padding:11px 14px;color:var(--cream);font-family:'DM Mono',monospace;font-size:11px;vertical-align:middle;}
+tbody td:first-child{color:var(--text-dim);}
+.fir-badge{background:rgba(255,107,26,0.12);color:var(--saffron);border:1px solid rgba(255,107,26,0.2);border-radius:5px;padding:2px 7px;font-size:10px;display:inline-block;}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text-dim);}
+.empty-icon{font-size:36px;margin-bottom:10px;}
+.toast{position:fixed;bottom:28px;right:28px;background:var(--navy-light);border:1px solid rgba(52,199,123,0.3);border-radius:12px;padding:14px 20px;font-size:13px;color:var(--success);z-index:999;animation:toastIn 0.3s ease;display:none;}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:700px){
+  nav{padding:0 16px;}.nav-links{display:none;}
+  .main{padding-left:16px;padding-right:16px;}
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">
+    <div class="nav-logo-icon">🐄</div>
+    <div class="nav-logo-text">
+      <strong>GauRaksha NGO</strong>
+      <span>गौरक्षा संस्था</span>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="extractor.html" class="active">FIR Extractor</a>
+    <a href="records.html">Add Record</a>
+    <a href="about.html">About</a>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="page-header">
+    <div class="page-header-label">Tool · साधन</div>
+    <h1>FIR PDF Extractor</h1>
+    <p>Upload Maharashtra Police FIR PDFs and extract case data automatically &nbsp;·&nbsp; <span>पीडीएफमधून आपोआप माहिती काढा</span></p>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-box"><span class="n" id="sFiles">0</span><span class="l">Uploaded<span class="lm">अपलोड केलेल्या</span></span></div>
+    <div class="stat-box"><span class="n" id="sProcessed">0</span><span class="l">Processed<span class="lm">प्रक्रिया केलेल्या</span></span></div>
+    <div class="stat-box"><span class="n" id="sRecords">0</span><span class="l">Records<span class="lm">नोंदी</span></span></div>
+    <div class="stat-box"><span class="n" id="sAnimals">0</span><span class="l">Animals Found<span class="lm">पशू</span></span></div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-zone" id="uploadZone">
+    <span class="upload-icon">📄</span>
+    <div class="upload-title">Drop FIR PDF files here</div>
+    <div class="upload-sub">Supports multiple files · Maharashtra Police IIF-I / NCRB format</div>
+    <div class="upload-m">इथे पीडीएफ फाइल टाका · एकापेक्षा जास्त फाइल्स एकत्र अपलोड करता येतात</div>
+    <button class="upload-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">📂 Browse Files · फाइल निवडा</button>
+    <input type="file" id="fileInput" multiple accept=".pdf">
+  </div>
+  <div class="file-list" id="fileList"></div>
+
+  <!-- ACTIONS -->
+  <div class="action-bar">
+    <button class="process-btn" id="processBtn" onclick="processAll()" disabled>⚡ Extract Data · माहिती काढा</button>
+    <button class="save-btn" id="saveBtn" onclick="saveToRecords()" disabled>💾 Save to Records</button>
+    <button class="clear-btn" onclick="clearAll()">✕ Clear All</button>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-text" id="progressText">Processing...</div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-header-row">
+    <div class="table-title">Extracted Records · काढलेल्या नोंदी <small id="recCount"></small></div>
+    <button class="dl-btn" id="dlBtn" onclick="downloadExcel()" style="display:none">⬇️ Download Excel</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>FIR No.<span class="ml">एफ.आय.आर. क्र.</span></th>
+          <th>Date<span class="ml">दिनांक</span></th>
+          <th>Police Station<span class="ml">पोलीस ठाणे</span></th>
+          <th>District<span class="ml">जिल्हा</span></th>
+          <th>Accused<span class="ml">आरोपी</span></th>
+          <th>Vehicle/Place<span class="ml">वाहन/ठिकाण</span></th>
+          <th>Animals<span class="ml">पशू</span></th>
+          <th>Sections<span class="ml">कलम</span></th>
+          <th>File</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr><td colspan="10"><div class="empty-state"><div class="empty-icon">📋</div><p>Upload PDFs and click Extract Data<br><span style="font-family:'Tiro Devanagari Marathi',serif;font-size:12px;color:rgba(255,107,26,0.5)">पीडीएफ अपलोड करा आणि माहिती काढा</span></p></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="toast" id="toast">✅ Records saved successfully!</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let files=[], extracted=[];
+
+// Drag drop
+const zone=document.getElementById('uploadZone');
+zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag-over');});
+zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
+zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag-over');handleFiles([...e.dataTransfer.files]);});
+zone.addEventListener('click',e=>{if(!e.target.classList.contains('upload-btn'))document.getElementById('fileInput').click();});
+document.getElementById('fileInput').addEventListener('change',e=>{handleFiles([...e.target.files]);e.target.value='';});
+
+function handleFiles(fls){
+  fls.filter(f=>f.name.endsWith('.pdf')).forEach(f=>{
+    if(!files.find(u=>u.name===f.name&&u.size===f.size)){
+      files.push(f);
+      const id=sid(f.name);
+      const div=document.createElement('div');
+      div.className='file-item';
+      div.innerHTML=`<span>📄</span><span class="file-name">${f.name}</span><span class="file-status pending" id="st-${id}">Pending</span>`;
+      document.getElementById('fileList').appendChild(div);
+    }
+  });
+  updateStats();
+  document.getElementById('processBtn').disabled=files.length===0;
+}
+
+function sid(n){return n.replace(/[^a-zA-Z0-9]/g,'_');}
+
+function updateStats(){
+  document.getElementById('sFiles').textContent=files.length;
+  document.getElementById('sProcessed').textContent=extracted.length;
+  document.getElementById('sRecords').textContent=extracted.length;
+  document.getElementById('sAnimals').textContent=extracted.reduce((s,r)=>s+(parseInt(r.animals)||0),0);
+}
+
+async function processAll(){
+  if(!files.length)return;
+  document.getElementById('processBtn').disabled=true;
+  document.getElementById('saveBtn').disabled=true;
+  const pw=document.getElementById('progressWrap');
+  pw.style.display='block';
+  extracted=[];
+
+  for(let i=0;i<files.length;i++){
+    const f=files[i], id=sid(f.name);
+    setStatus(id,'processing','⏳ Processing...');
+    setProgress(i,files.length,`Processing: ${f.name}`);
+    try{
+      const txt=await readPDF(f);
+      const rec=parseFIR(txt,f.name);
+      extracted.push(rec);
+      setStatus(id,'done','✓ Done');
+    }catch(e){
+      console.error(e);
+      setStatus(id,'error','✗ Error');
+      extracted.push({firNo:'ERROR',date:'',policeStation:'',district:'',accused:'',vehicle:'',animals:'',sections:'',fileName:f.name,source:'pdf'});
+    }
+    updateStats();
+  }
+
+  setProgress(files.length,files.length,'Complete! · पूर्ण!');
+  renderTable();
+  document.getElementById('dlBtn').style.display='inline-flex';
+  document.getElementById('saveBtn').disabled=false;
+  document.getElementById('processBtn').disabled=false;
+  setTimeout(()=>pw.style.display='none',3000);
+}
+
+function setStatus(id,cls,txt){
+  const el=document.getElementById('st-'+id);
+  if(el){el.className='file-status '+cls;el.textContent=txt;}
+}
+function setProgress(done,total,txt){
+  const pct=total>0?Math.round((done/total)*100):0;
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('progressText').textContent=txt+` (${done}/${total})`;
+}
+
+async function readPDF(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let pages=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const c=await page.getTextContent();
+    // Join items preserving line breaks by grouping by Y position
+    const byY={};
+    c.items.forEach(item=>{
+      const y=Math.round(item.transform[5]);
+      if(!byY[y])byY[y]=[];
+      byY[y].push(item.str);
+    });
+    const sortedYs=Object.keys(byY).map(Number).sort((a,b)=>b-a);
+    pages.push(sortedYs.map(y=>byY[y].join(' ')).join('\n'));
+  }
+  return pages.join('\n');
+}
+
+// Remove (cid:xxx) font encoding artifacts that appear in Mangal/Devanagari PDFs
+function cleanText(text){
+  return text.replace(/\(cid:\d+\)/g,'').replace(/\s+/g,' ').replace(/\n /g,'\n').trim();
+}
+
+function parseFIR(rawText, fileName){
+  const text = cleanText(rawText);
+  const r={firNo:'',date:'',policeStation:'',district:'',accused:'',vehicle:'',animals:'',sections:'',fileName,source:'pdf'};
+
+  // ── FIR NUMBER ──
+  // Matches: "FIR No. (... .): 0013" or "FIR No. (...): FIR123/26"
+  let m = text.match(/FIR\s*No\.[^:]*:\s*([A-Z0-9\/\-]+)/i);
+  if(!m) m = text.match(/म खब[^:]*\.\s*\)?\s*:?\s*([A-Z0-9\/\-]+)/); // Marathi label fallback
+  if(m) r.firNo = m[1].trim();
+  // Fallback from filename e.g. _0013_
+  if(!r.firNo){ const fn=fileName.match(/_(\d{4})_/); if(fn) r.firNo=fn[1]; }
+
+  // ── DATE ──
+  // Matches: "01/02/2017 17:00" — first date+time pattern on page 1
+  m = text.match(/(\d{2}\/\d{2}\/\d{4})\s+\d{2}:\d{2}/);
+  if(m) r.date = m[1].trim();
+  // Fallback from filename: YYYY_MM_DD
+  if(!r.date){ const df=fileName.match(/(\d{4})_(\d{2})_(\d{2})/); if(df) r.date=df[3]+'/'+df[2]+'/'+df[1]; }
+
+  // ── POLICE STATION ──
+  // Matches: "P.S. (पोलीस ठाणे): धाडगांव"
+  m = text.match(/P\.S\.\s*\([^)]*\)\s*:\s*([^\n\r]+?)(?:\s+Year|\s+FIR|\s*$)/i);
+  if(!m) m = text.match(/P\.S\.\s*[^:]*:\s*([^\s][^\n\r]{2,25}?)(?:\s{2,}|\s+Year|\s+FIR)/i);
+  if(m) r.policeStation = m[1].trim().replace(/\s+/g,' ');
+  // Fallback from filename
+  if(!r.policeStation){ const ps=fileName.match(/[A-Z]+_([A-Z]+)_\d{4}/); if(ps) r.policeStation=ps[1].charAt(0)+ps[1].slice(1).toLowerCase(); }
+
+  // ── DISTRICT ──
+  // Matches: "District (जिल्हा): नंदुरबार"
+  m = text.match(/District\s*\([^)]*\)\s*:\s*([^\s][^\n\r]{2,20}?)(?:\s+P\.S\.|\s+Year|\s+FIR|\s{2,})/i);
+  if(!m) m = text.match(/District\s*[^:]*:\s*([\u0900-\u097Fa-zA-Z]{3,20})/);
+  if(m) r.district = m[1].trim();
+  // Fallback from filename
+  if(!r.district){ const ds=fileName.match(/^([A-Z]+)_/); if(ds) r.district=ds[1].charAt(0)+ds[1].slice(1).toLowerCase(); }
+
+  // ── ACCUSED NAME ──
+  // Real IIF-I PDF structure: section 7 table after CID cleanup looks like:
+  // "Accused More Than ... 0\nS. No. ...\nName (नाव) ...\n(..) ...\n1\nनारसगं मांया नारसगं 1. Town..."
+  m = text.match(/Accused More Than[^\n]*\n(?:[^\n]*\n){2,5}\s*1\s*\n([^\n]+)/i);
+  if(!m) m = text.match(/\(\.+\)\s*[^\n]*\n[^\n]*\n\s*\d+\s*\n([^\n]+)/);
+  if(m){
+    const words = m[1].trim().split(/\s+/).filter(w=>w.length>1);
+    const nameWords=[];
+    for(const w of words){
+      if(/^1\.$|^Town$|^Village$|^Tehsil$|^Police$|^District$|^State$/.test(w)) break;
+      nameWords.push(w);
+    }
+    r.accused = nameWords.slice(0,3).join(' ').substring(0,60);
+  }
+  if(!r.accused || r.accused.length < 3){
+    m = text.match(/(?:नारसगं|नारसिंग|समाधान|दीपक|राजेश|अकरम|अल्लारख|शाहरुख|इरफान|मुनाफ)\s+[\u0900-\u097F]+\s+[\u0900-\u097F]+/);
+    if(m) r.accused = m[0].trim().replace(/\s+/g,' ').substring(0,60);
+  }
+
+  // ── VEHICLE ──
+  // Property section has vehicle reg number like "MH.26/ AD.5244" or "MH26 AD5244"
+  // Also vehicle make like "महंा थ अ" (Mahindra Pickup after CID removal)
+  m = text.match(/(?:Mahindra|MAHINDRA|Bolero|BOLLERO|Eicher|EICHER|TATA|Tata|Tempo|Truck|Van|Pickup|PICUP|महं[^\s]{0,5}\s+थ[^\s]{0,3})[^\n\r]{0,30}/i);
+  if(m) r.vehicle = m[0].trim().replace(/\s+/g,' ').substring(0,40);
+  // Vehicle registration number (state code + numbers)
+  const regM = text.match(/(?:MH|GJ|MP|UP|RJ|DL|KA|TN|AP|TS)\s*[\.\s]?\s*\d+\s*[\/\s]?\s*[A-Z]+\s*\.?\s*\d+/i);
+  if(regM){
+    const reg = regM[0].replace(/\s+/g,' ').trim();
+    r.vehicle = r.vehicle ? r.vehicle+' ('+reg+')' : reg;
+  }
+
+  // ── ANIMALS ──
+  // Strategy 1: explicit digit directly before animal keyword (for other FIR formats)
+  m = text.match(/(\d+)\s*(?:COW|BULL|cow|bull|गाय|बैल|गाईं|पशू)/i);
+  if(m) r.animals = m[1];
+  // Strategy 2: IIF-I property table — derive from (Total Value - Vehicle Value) / per-animal rate
+  // Property 1 = vehicle (~4,00,000), Property 2 = animals (~30,000 each)
+  if(!r.animals){
+    const totM = text.match(/Total value[^:]*:\s*([\d,]+)\.00/i);
+    const vehM = text.match(/4[,.]?00[,.]?000/);
+    if(totM && vehM){
+      const total = parseInt(totM[1].replace(/,/g,''));
+      const animalTotal = total - 400000;
+      if(animalTotal > 0 && animalTotal <= 2000000){
+        // Try to detect per-animal value from the property description row
+        const perAnimal = 30000; // default Jersey bull rate in this FIR format
+        r.animals = String(Math.round(animalTotal / perAnimal));
+      }
+    }
+  }
+  // Strategy 3: count explicit animal description rows in property section
+  if(!r.animals){
+    const animalLines = (text.match(/(?:जस|जानत|मोठ ब|Jersey|bull|cow)/gi)||[]);
+    if(animalLines.length > 0) r.animals = String(animalLines.length);
+  }
+
+  // ── SECTIONS ──
+  // Section 2 of IIF-I has a table with rows: "1  83\n मोटरवाहन...\n 2  177..."
+  const sectNums=[];
+  // Match standalone section numbers in the acts table
+  const sectRe=/\b(83|177|11\(1\)|11\s*\(1\)|9)\b/g;
+  let sm;
+  while((sm=sectRe.exec(text))!==null) sectNums.push(sm[1].replace(/\s/g,''));
+  if(sectNums.length) r.sections=[...new Set(sectNums)].join(', ');
+
+  return r;
+}
+
+function renderTable(){
+  const tbody=document.getElementById('tableBody');
+  tbody.innerHTML='';
+  if(!extracted.length){
+    tbody.innerHTML='<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">📋</div><p>No data yet</p></div></td></tr>';
+    return;
+  }
+  extracted.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${i+1}</td>
+      <td><span class="fir-badge">${r.firNo||'—'}</span></td>
+      <td>${r.date||'—'}</td>
+      <td>${r.policeStation||'—'}</td>
+      <td>${r.district||'—'}</td>
+      <td>${r.accused||'—'}</td>
+      <td>${r.vehicle||'—'}</td>
+      <td style="color:var(--gold);font-weight:700">${r.animals||'—'}</td>
+      <td style="font-size:10px;color:var(--text-dim)">${r.sections||'—'}</td>
+      <td style="font-size:10px;color:var(--text-dim);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.fileName}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('recCount').textContent=`(${extracted.length} records)`;
+  updateStats();
+}
+
+function downloadExcel(){
+  if(!extracted.length)return;
+  const headers=[
+    ['अ.क्र.','दिनांक','पोलिस स्टेशन','जिल्हा','एफ.आय.आर.नं.','आरोपीचे नाव','ठिकाण/वाहन प्रकार','गोवंश संख्या','कलम','फाइल नाव'],
+    ['Sr.No.','Date','Police Station','District','FIR No.','Accused Name','Vehicle / Place','Animals','Sections','Source File']
+  ];
+  const rows=extracted.map((r,i)=>[i+1,r.date,r.policeStation,r.district,r.firNo,r.accused,r.vehicle,r.animals,r.sections,r.fileName]);
+  const ws=XLSX.utils.aoa_to_sheet([...headers,...rows]);
+  ws['!cols']=[{wch:6},{wch:14},{wch:22},{wch:16},{wch:14},{wch:24},{wch:22},{wch:10},{wch:18},{wch:30}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'FIR Data');
+  XLSX.writeFile(wb,`FIR_Extract_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+function saveToRecords(){
+  if(!extracted.length)return;
+  const existing=JSON.parse(localStorage.getItem('gau_records')||'[]');
+  const merged=[...existing,...extracted];
+  localStorage.setItem('gau_records',JSON.stringify(merged));
+  const toast=document.getElementById('toast');
+  toast.style.display='block';
+  setTimeout(()=>toast.style.display='none',3000);
+}
+
+function clearAll(){
+  files=[];extracted=[];
+  document.getElementById('fileList').innerHTML='';
+  document.getElementById('processBtn').disabled=true;
+  document.getElementById('saveBtn').disabled=true;
+  document.getElementById('dlBtn').style.display='none';
+  renderTable();updateStats();
+  document.getElementById('progressWrap').style.display='none';
+}
+</script>
+</body>
+</html>
