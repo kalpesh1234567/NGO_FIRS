@@ -254,17 +254,29 @@ async function processAll(){
 
   for(let i=0;i<files.length;i++){
     const f=files[i], id=sid(f.name);
-    setStatus(id,'processing','⏳ Processing...');
+    setStatus(id,'processing','⏳ Uploading to Gemini...');
     setProgress(i,files.length,`Processing: ${f.name}`);
-    try{
-      const txt=await readPDF(f);
-      const rec=parseFIR(txt,f.name);
-      extracted.push(rec);
-      setStatus(id,'done','✓ Done');
-    }catch(e){
+    try {
+      const formData = new FormData();
+      formData.append('pdf', f);
+      
+      const response = await fetch('http://localhost:3000/api/extract', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed extraction');
+      }
+      
+      const records = await response.json();
+      records.forEach(rec => extracted.push(rec));
+      setStatus(id,'done',`✓ ${records.length} case${records.length>1?'s':''}`);
+    } catch(e) {
       console.error(e);
       setStatus(id,'error','✗ Error');
-      extracted.push({firNo:'',date:'',policeStation:'',district:'',accused:'',vehicle:'',animals:'',sections:'',io:'',fileName:f.name,source:'pdf'});
+      extracted.push({firNo:'',date:'',policeStation:'',district:'',accused:'',vehicle:'',animals:'',sections:'',io:'',fileName:f.name,source:'error'});
     }
     updateStats();
   }
@@ -282,191 +294,6 @@ function setProgress(done,total,txt){
   const pct=total>0?Math.round((done/total)*100):0;
   document.getElementById('progressFill').style.width=pct+'%';
   document.getElementById('progressText').textContent=txt+` (${done}/${total})`;
-}
-
-// ─── PDF READING (Y-sorted for correct line order) ───────────────────────────
-async function readPDF(file){
-  const buf=await file.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
-  let pageTexts=[];
-  for(let p=1;p<=pdf.numPages;p++){
-    const page=await pdf.getPage(p);
-    const c=await page.getTextContent();
-    // Group text items by Y position to reconstruct lines
-    const byY={};
-    c.items.forEach(item=>{
-      const y=Math.round(item.transform[5]);
-      if(!byY[y])byY[y]=[];
-      byY[y].push(item.str);
-    });
-    // Sort Y descending (top of page first)
-    const lines=Object.keys(byY).map(Number).sort((a,b)=>b-a)
-      .map(y=>byY[y].join(' ').trim()).filter(l=>l.length>0);
-    pageTexts.push(lines.join('\n'));
-  }
-  return pageTexts.join('\n');
-}
-
-// Remove (cid:xxx) Mangal/Devanagari font encoding artifacts
-function cleanText(t){
-  return t.replace(/\(cid:\d+\)/g,'').replace(/[ \t]+/g,' ').trim();
-}
-
-// ─── MAIN PARSER — validated against real Maharashtra IIF-I NCRB FIR PDFs ───
-function parseFIR(rawText, fileName){
-  const text = cleanText(rawText);
-  const r={firNo:'',date:'',policeStation:'',district:'',accused:'',vehicle:'',animals:'',sections:'',io:'',fileName,source:'pdf'};
-  let m;
-
-  // ── FIR NUMBER ──────────────────────────────────────────────────────────────
-  // "FIR No. (प्रम खबर क्र.): 0013"  or  "FIR No. (...): FIR123/26"
-  m = text.match(/FIR\s*No\.[^:]*:\s*([A-Z0-9][A-Z0-9\/\-]*)/i);
-  if(m) r.firNo = m[1].trim();
-  // Fallback: 4-digit from filename like _0013_
-  if(!r.firNo){ const fn=fileName.match(/_(\d{4})_/); if(fn) r.firNo=fn[1]; }
-
-  // ── DATE OF FIR ─────────────────────────────────────────────────────────────
-  // "01/02/2017 17:00 वाजता"  — first dd/mm/yyyy + time on page 1
-  m = text.match(/(\d{2}\/\d{2}\/\d{4})\s+\d{2}:\d{2}/);
-  if(m) r.date = m[1].trim();
-  // Fallback from filename: YYYY_MM_DD
-  if(!r.date){ const df=fileName.match(/(\d{4})_(\d{2})_(\d{2})/); if(df) r.date=`${df[3]}/${df[2]}/${df[1]}`; }
-
-  // ── POLICE STATION ──────────────────────────────────────────────────────────
-  m = text.match(/P\.S\.\s*\([^)]*\)\s*:\s*(.+?)(?=\s+Year|\s+District|\s+FIR\b|\n|$)/i);
-  if(!m) m = text.match(/P\.S\.\s*\([^)]*\)\s*:\s*(\S[^\n]{1,30})/i);
-  
-  if(m) {
-    let ps = m[1].trim();
-    // Sometimes OCR produces extra garbage before "District", so we split to be safe.
-    ps = ps.split(/\s+District|District\s*\(/i)[0].trim();
-    r.policeStation = ps;
-  }
-  
-  // Fallback from filename: DISTRICT_STATION_YEAR
-  if(!r.policeStation){
-    const ps=fileName.match(/^[A-Z]+_([A-Z]+)_\d{4}/);
-    if(ps) r.policeStation=ps[1].charAt(0)+ps[1].slice(1).toLowerCase();
-  }
-
-  // ── DISTRICT ────────────────────────────────────────────────────────────────
-  // "District (जिल्हा): नंदुरबार P.S."
-  m = text.match(/District\s*\([^)]*\)\s*:\s*(\S[^\n]{2,20}?)\s+P\.S\./i);
-  if(!m) m = text.match(/District\s*\([^)]*\)\s*:\s*([\u0900-\u097Fa-zA-Z]{3,20})/i);
-  if(m) r.district = m[1].trim();
-  // Fallback from filename first segment
-  if(!r.district){
-    const ds=fileName.match(/^([A-Z][A-Z]+)_/);
-    if(ds) r.district=ds[1].charAt(0)+ds[1].slice(1).toLowerCase();
-  }
-
-  // ── ACCUSED NAME ────────────────────────────────────────────────────────────
-  // IIF-I Section 7 table structure:
-  // "7. Details of known/suspected..."
-  // Followed by headers, "1.", then the name.
-  m = text.match(/(?:7\.|Accused More Than)[^\n]*\n(?:[^\n]*\n){0,10}?\s*1(?:\.|\s|\|)+\s*([^\n]+)/i);
-  if(!m) m = text.match(/Accused More Than[^\n]*\n(?:[^\n]*\n){0,8}\s*1(?:\.|\s|\|)+\s*([^\n]+)/i);
-  if(!m) m = text.match(/\(\.+\)\s*[^\n]*\n[^\n]*\n\s*1?\d+(?:\.|\s|\|)+\s*([^\n]+)/);
-  if(m){
-    const words = m[1].trim().split(/\s+/).filter(w=>w.length>1);
-    const nameWords=[];
-    for(const w of words){
-      // Stop at address markers or header artifacts
-      if(/^1\.$|^Town$|^Village$|^Tehsil$|^Police$|^District$|^State$|^\d+\.$/i.test(w)) break;
-      // Clean OCR digits inside names (like ना00रंग -> नारंग)
-      const cleanedWord = w.replace(/\d+/g, '');
-      if(cleanedWord.length > 2) nameWords.push(cleanedWord);
-      else if([...w].some(c => c > '\u0900' && c < '\u097F')) nameWords.push(cleanedWord); // Keep short Marathi words
-    }
-    // Accused table has: NAME  ALIAS  ADDRESS — take first few words
-    const unique=[...new Set(nameWords.slice(0,4))];
-    r.accused = unique.join(' ').substring(0,60).trim();
-  }
-  
-  // Fallback: scan for well-known Devanagari first names
-  if(!r.accused || r.accused.length < 3){
-    m = text.match(/(?:नारसगं|नारसिंग|समाधान|दीपक|राजेश|अकरम|अल्लारख|शाहरुख|इरफान|मुनाफ|संजय|रमेश|विजय)\s+[\u0900-\u097F]+\s+[\u0900-\u097F]+/);
-    if(m) r.accused = m[0].trim().replace(/\s+/g,' ').substring(0,60);
-  }
-
-  // ── VEHICLE ─────────────────────────────────────────────────────────────────
-  // Vehicle make: "महंा थ अ" = Mahindra Pickup (after CID removal from "महीन्द्रा पिकप")
-  // Also handles: Bolero, Eicher, TATA, etc.
-  const makePat = /(?:Mahindra|MAHINDRA|Bolero|BOLLERO|Eicher|EICHER|TATA 407|Tata|Tempo|Truck|Van|Pickup|PICUP)/i;
-  m = text.match(makePat);
-  if(m) r.vehicle = m[0].trim();
-  // Devanagari make after CID stripping (common patterns)
-  if(!r.vehicle){
-    if(/महं/.test(text)) r.vehicle = 'Mahindra Pickup';
-    else if(/बोलेरो|BOLERO/i.test(text)) r.vehicle = 'Bolero';
-    else if(/आयचर|Eicher/i.test(text)) r.vehicle = 'Eicher Truck';
-    else if(/टाटा|TATA/i.test(text)) r.vehicle = 'TATA 407';
-  }
-  // Vehicle registration number: "MH.26/ AD.5244" → "MH26/AD5244"
-  const regM = text.match(/\b((?:MH|GJ|MP|UP|RJ|DL|KA|TN|AP|TS|HR|PB|RJ)\s*[\.\s]?\d{1,2}\s*[\/\s]?\s*[A-Z]{1,3}\s*[\.\s]?\d{3,5})\b/i);
-  if(regM){
-    const reg = regM[1].replace(/[\s\.]+/g,'').replace(/\/+/,'/').toUpperCase();
-    r.vehicle = r.vehicle ? `${r.vehicle} (${reg})` : reg;
-  }
-
-  // ── ANIMALS ─────────────────────────────────────────────────────────────────
-  // Strategy 1: explicit "5 COW" / "10 बैल" pattern
-  m = text.match(/(\d{1,3})\s*(?:COW|BULL|cow|bull|गाय|बैल|गाईं|पशू)\b/i);
-  if(m) r.animals = m[1];
-
-  // Strategy 2: Excel-style entry like "5 COW" or "10 COW" from the image data
-  if(!r.animals){
-    m = text.match(/(\d{1,2})\s*COW/i);
-    if(m) r.animals = m[1];
-  }
-
-  // Strategy 3: IIF-I property table — (Total − Vehicle value) ÷ per-animal rate
-  // Works when property 1 = vehicle, property 2 = animals (standard format)
-  if(!r.animals){
-    const totM = text.match(/Total\s+value[^:]*:\s*([\d,]+)\.(?:00)?/i);
-    // Look for vehicle value — can be 4,00,000 / 3,00,000 / 2,00,000 etc.
-    const vehValM = text.match(/(\d[,\d]+),000\.00\n(?:[^\n]*\n){0,3}(?:वाहन|vehicle)/i)
-                 || text.match(/(\d[,\d]+)\.00\n[^\n]*MH/i);
-    if(totM){
-      const total = parseInt(totM[1].replace(/,/g,''));
-      // Try to identify vehicle value from property table
-      let vehVal = 0;
-      const vehM4L = text.match(/4,00,000/); if(vehM4L) vehVal = 400000;
-      const vehM3L = text.match(/3,00,000/); if(vehM3L && !vehVal) vehVal = 300000;
-      const vehM2L = text.match(/2,00,000/); if(vehM2L && !vehVal) vehVal = 200000;
-      const vehM1L = text.match(/1,00,000/); if(vehM1L && !vehVal) vehVal = 100000;
-      if(vehVal > 0){
-        const animalTotal = total - vehVal;
-        if(animalTotal > 0 && animalTotal < 2000000){
-          // Try to detect per-animal value
-          const perAnimalM = text.match(/(\d{2}),000\.00\n[^\n]*(?:जस|जानत|गाय|बैल|cow|bull|Jersey)/i);
-          const perAnimal = perAnimalM ? parseInt(perAnimalM[1])*1000 : 30000;
-          r.animals = String(Math.max(1, Math.round(animalTotal / perAnimal)));
-        }
-      }
-    }
-  }
-
-  // ── IO NAME ─────────────────────────────────────────────────────────────────
-  // "Directed (Name of I.O.) (...): Rank (...)\nJyotiba Kailas Dipak"
-  m = text.match(/Name of I\.O\.[^\n]*\n[^\n]*\n([A-Za-z][A-Za-z\s]{4,40})/i);
-  if(!m) m = text.match(/Directed[^\n]*\nRank[^\n]*\n([A-Za-z][A-Za-z\s]{4,40})/i);
-  if(m) r.io = m[1].trim().replace(/\s+/g,' ');
-  // Also grab from "Name (नाव): Dipak Kisanrao Budhawant" (signing officer)
-  if(!r.io){
-    m = text.match(/Name \(नाव\):\s*([A-Za-z][A-Za-z\s]{4,40})/);
-    if(m) r.io = m[1].trim();
-  }
-
-  // ── SECTIONS ────────────────────────────────────────────────────────────────
-  // IIF-I Section 2 lists acts with section numbers like: 83, 177, 11(1), 9
-  const sectNums=new Set();
-  const sr=/\b(83|177|11\s*\(1\)|9|302|304|307|379|420)\b/g;
-  let sm;
-  while((sm=sr.exec(text))!==null) sectNums.add(sm[1].replace(/\s/g,''));
-  if(sectNums.size) r.sections=[...sectNums].join(', ');
-
-  return r;
 }
 
 // ─── RENDER TABLE (with inline editable cells) ────────────────────────────────
